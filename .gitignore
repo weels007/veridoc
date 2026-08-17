@@ -1,0 +1,32 @@
+# --- Python / tests ---
+__pycache__/
+*.pyc
+.pytest_cache/
+artifacts/
+
+# --- Secrets ---
+.env
+.env.local
+.env.production
+.env.*.local
+
+# --- Node / Next.js frontend ---
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+package-lock.json
+
+# --- scripts (node deps + local state) ---
+scripts/node_modules/
+scripts/package-lock.json
+scripts/*.log
+scripts/e2e*-state.json
+scripts/v*.log
+scripts/deploy.json
+
+# --- misc logs ---
+*.log
+server*.log

@@ -1,0 +1,17 @@
+{
+  "name": "veridoc-scripts",
+  "version": "1.0.0",
+  "description": "Deploy & end-to-end test scripts for the veridoc contract",
+  "main": "deploy.cjs",
+  "scripts": {
+    "deploy": "node deploy.cjs",
+    "test": "node test-e2e.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "genlayer-js": "^1.1.8"
+  }
+}
