@@ -81,8 +81,7 @@ export default function SubjectDetailPage() {
     await run("challenge_verification", [vid, urlList], 100n, "Challenge submitted");
   }
 
-  if (loading) return <div className="window" style={{ padding: 12 }}>Loading subject…</div>;
-  if (!subject || Object.keys(subject).length === 0) {
+  if (!loading && (!subject || Object.keys(subject).length === 0)) {
     return (
       <div className="window" style={{ padding: 12 }}>
         Subject <span className="mono">{id}</span> not found. <Link href="/subjects">Back to subjects</Link>
@@ -97,13 +96,14 @@ export default function SubjectDetailPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <Link className="tool-btn" href="/subjects">← Subjects</Link>
-        <h1 style={{ margin: 0, fontSize: 20, color: "#1a3a66" }}>{subject.name}</h1>
-        {verifiedFlag !== null && (
+        <h1 style={{ margin: 0, fontSize: 20, color: "#1a3a66" }}>{subject?.name ?? "Loading subject…"}</h1>
+        {verifiedFlag !== null && verifiedFlag !== undefined && (
           <span className={verifiedFlag ? "badge badge-green" : "badge badge-red"}>
             {verifiedFlag ? "● VERIFIED" : "○ Not verified"}
           </span>
         )}
         <span style={{ flex: 1 }} />
+        {loading && <span className="badge badge-gray">syncing…</span>}
         <button className="tool-btn" onClick={reloadAll}>↻ Refresh</button>
       </div>
 
@@ -114,17 +114,17 @@ export default function SubjectDetailPage() {
           <div className="section-title">On-chain record</div>
           <table className="office-table">
             <tbody>
-              <tr><td style={{ width: 130 }}><b>ID</b></td><td className="mono">{subject.id}</td></tr>
-              <tr><td><b>Owner</b></td><td className="mono">{subject.owner}</td></tr>
-              <tr><td><b>Category</b></td><td>{subject.category}</td></tr>
-              <tr><td><b>Required level</b></td><td>{subject.required_level}</td></tr>
-              <tr><td><b>Allowed domains</b></td><td className="mono">{subject.allowed_domains || "(any)"}</td></tr>
-              <tr><td><b>Trust score</b></td><td>{subject.trust_score}</td></tr>
-              <tr><td><b>Verified count</b></td><td>{subject.verified_count}</td></tr>
+              <tr><td style={{ width: 130 }}><b>ID</b></td><td className="mono">{subject?.id ?? "…"}</td></tr>
+              <tr><td><b>Owner</b></td><td className="mono">{subject?.owner ?? "…"}</td></tr>
+              <tr><td><b>Category</b></td><td>{subject?.category ?? "…"}</td></tr>
+              <tr><td><b>Required level</b></td><td>{subject?.required_level ?? "…"}</td></tr>
+              <tr><td><b>Allowed domains</b></td><td className="mono">{subject?.allowed_domains || "(any)"}</td></tr>
+              <tr><td><b>Trust score</b></td><td>{subject?.trust_score ?? "…"}</td></tr>
+              <tr><td><b>Verified count</b></td><td>{subject?.verified_count ?? "…"}</td></tr>
             </tbody>
           </table>
           <div style={{ marginTop: 8, padding: 8, background: "#fff", border: "1px solid #a09b91" }}>
-            {subject.description}
+            {subject?.description ?? "…"}
           </div>
 
           <div style={{ marginTop: 10 }}>
