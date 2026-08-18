@@ -37,6 +37,9 @@ export default function VerifyPage() {
 
   const myStake = verifier && Object.keys(verifier).length ? Number(verifier.stake) : 0;
   const subjectList = subjects && typeof subjects === "object" ? Object.entries(subjects) : [];
+  // Only subjects the connected wallet OWNS can be verified from this page.
+  const addrLower = (address || "").toLowerCase();
+  const mySubjects = subjectList.filter(([, s]: any) => String(s.owner).toLowerCase() === addrLower);
 
   async function verify() {
     if (!window.ethereum || !address) return toast.error("Connect your wallet first");
@@ -76,13 +79,27 @@ export default function VerifyPage() {
         <div className="grid-2" style={{ gap: 12 }}>
           <div>
             <div className="field-group">
-              <label className="office-label">Subject</label>
-              <select className="office-select" value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
-                <option value="">— select subject —</option>
-                {subjectList.map(([sid, s]: any) => (
+              <label className="office-label">Subject (only yours)</label>
+              <select
+                className="office-select"
+                value={subjectId}
+                onChange={(e) => setSubjectId(e.target.value)}
+                disabled={!address || mySubjects.length === 0}
+              >
+                <option value="">— select your subject —</option>
+                {mySubjects.map(([sid, s]: any) => (
                   <option key={sid} value={sid}>{sid} — {s.name}</option>
                 ))}
               </select>
+              {!address ? (
+                <div style={{ marginTop: 4, fontSize: 11, color: "#9c6500" }}>
+                  Connect your wallet to verify your own subjects.
+                </div>
+              ) : mySubjects.length === 0 ? (
+                <div style={{ marginTop: 4, fontSize: 11, color: "#9c6500" }}>
+                  You don't own any subjects yet. <Link href="/subjects">Create one</Link> first.
+                </div>
+              ) : null}
             </div>
 
             {subjectInfo && (
