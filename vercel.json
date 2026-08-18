@@ -3,7 +3,6 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "maxDuration": 60,
   "functions": {
     "src/app/api/rpc/route.ts": {
       "maxDuration": 60
