@@ -17,7 +17,7 @@ out/
 build/
 *.tsbuildinfo
 next-env.d.ts
-package-lock.json
+# NOTE: root package-lock.json is intentionally tracked (Vercel installs deterministically).
 
 # --- scripts (node deps + local state) ---
 scripts/node_modules/
