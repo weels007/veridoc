@@ -9,7 +9,14 @@ import { toast } from "sonner";
 
 export default function VerifyPage() {
   const { address } = useWallet();
-  const { data: subjects } = useLive<any>("get_all_subjects", [], [], 20000);
+  // The view filters to the connected wallet's subjects (owner param), so only
+  // owned subjects come back; the client-side filter below is a safety net.
+  const { data: subjects } = useLive<any>(
+    "get_all_subjects",
+    address ? [address] : ["0x0000000000000000000000000000000000000000"],
+    [address],
+    20000
+  );
   const { data: verifier } = useLive<any>(
     "get_verifier",
     address ? [address] : ["0x0000000000000000000000000000000000000000"],

@@ -18,7 +18,7 @@
 <!-- ============ Toolbar ============ -->
 <div style="background:linear-gradient(180deg,#f6f4ed,#e6e3d6);border-bottom:1px solid #7f7b76;padding:4px 8px;font-size:12px;">
   <span style="display:inline-block;padding:3px 12px;border:1px solid #fff;border-right:1px solid #7f7b76;border-bottom:1px solid #7f7b76;background:#ece9d8;">✔ Verified on Studionet</span>
-  <span style="display:inline-block;padding:3px 12px;border:1px solid #fff;border-right:1px solid #7f7b76;border-bottom:1px solid #7f7b76;background:#ece9d8;margin-left:4px;">34 tests passing</span>
+  <span style="display:inline-block;padding:3px 12px;border:1px solid #fff;border-right:1px solid #7f7b76;border-bottom:1px solid #7f7b76;background:#ece9d8;margin-left:4px;">38 tests passing</span>
   <span style="display:inline-block;padding:3px 12px;border:1px solid #fff;border-right:1px solid #7f7b76;border-bottom:1px solid #7f7b76;background:#ece9d8;margin-left:4px;">Next.js frontend</span>
 </div>
 
@@ -41,7 +41,7 @@ Real-world use cases: KYC onboarding, verified professional profiles, org / gran
 <li><b>Fetch evidence</b> — the contract fetches each submitted evidence URL (real web data). Sources are labelled per party.</li>
 <li><b>Programmatic checks (deterministic)</b> — objective claims become sandboxed Python expressions, evaluated with strict <b>AST allow-listing</b> (no imports, no escapes). A violated check is <b>GROUND TRUTH</b> the AI cannot override.</li>
 <li><b>AI judgment</b> — an LLM judge weighs subjective claims, with the programmatic results injected as non-overridable ground truth.</li>
-<li><b>Validator consensus</b> — independent validators re-run the whole pipeline (re-fetching the web) and agree on <b>two</b> derived fields: verdict <code>status</code> <b>and</b> <code>prog_violated</code> (pass/fail of the mandatory criteria).</li>
+<li><b>Validator consensus (exact)</b> — independent validators re-run the whole pipeline (re-fetching the web) and accept the leader ONLY when the <b>exact</b> decision fields match: verdict <code>status</code> compared as strings (VERIFIED / UNVERIFIED / INCONCLUSIVE — two different statuses never agree) <b>and</b> <code>prog_violated</code> (pass/fail of the mandatory criteria). Reasoning, violation wording and check expressions are not compared.</li>
 <li><b>On-chain record</b> — stored with an evidence hash and a full revision trail, so every revision's exact evidence is preserved.</li>
 </ol>
 
@@ -77,6 +77,7 @@ Real-world use cases: KYC onboarding, verified professional profiles, org / gran
 - <b>No griefing</b> — INCONCLUSIVE never slashes; only a proven-false (UNVERIFIED) claim does.
 - <b>Domain gate</b> — evidence hosts validated against the whitelist before fetching.
 - <b>Key hygiene</b> — subject ids cannot contain `:`, preventing cross-subject contamination.
+- <b>Exact verdict consensus</b> — validators compare the leader's `status` as an exact string (VERIFIED vs UNVERIFIED vs INCONCLUSIVE is a hard disagreement), not a truthiness check; covered by dedicated tests where the leader and validator <b>disagree</b> (`test_consensus_rejects_exact_status_disagreement`, `test_consensus_rejects_verified_vs_inconclusive_mismatch`).
 
 ---
 
@@ -91,7 +92,7 @@ Real-world use cases: KYC onboarding, verified professional profiles, org / gran
 <tr><td style="border:1px solid #a09b91;padding:4px 8px;">Subject</td><td style="border:1px solid #a09b91;padding:4px 8px;"><code>create_subject</code>, <code>update_subject</code>, <code>set_allowed_domains</code></td></tr>
 <tr><td style="border:1px solid #a09b91;padding:4px 8px;">Staking</td><td style="border:1px solid #a09b91;padding:4px 8px;"><code>deposit_stake</code>, <code>withdraw_stake</code>, <code>withdraw_fee</code> (admin)</td></tr>
 <tr><td style="border:1px solid #a09b91;padding:4px 8px;">Verification</td><td style="border:1px solid #a09b91;padding:4px 8px;"><code>verify_claims</code> (returns ver id), <code>reverify</code>, <code>challenge_verification</code></td></tr>
-<tr><td style="border:1px solid #a09b91;padding:4px 8px;">Views</td><td style="border:1px solid #a09b91;padding:4px 8px;"><code>is_verified</code>, <code>get_subject_verdict</code>, <code>get_verified_subjects</code>, <code>get_subject</code>, <code>get_all_subjects</code>, <code>get_verification</code>, <code>get_all_verifications</code>, <code>get_verification_revisions</code>, <code>get_subject_verifications</code>, <code>get_verifier</code>, <code>get_fee_balance</code>, <code>get_contract_stats</code></td></tr>
+<tr><td style="border:1px solid #a09b91;padding:4px 8px;">Views</td><td style="border:1px solid #a09b91;padding:4px 8px;"><code>is_verified</code>, <code>get_subject_verdict</code>, <code>get_verified_subjects</code>, <code>get_subject</code>, <code>get_all_subjects(owner?)</code> (optional owner filter for the Verify page), <code>get_verification</code>, <code>get_all_verifications</code>, <code>get_verification_revisions</code>, <code>get_subject_verifications</code>, <code>get_verifier</code>, <code>get_fee_balance</code>, <code>get_contract_stats</code></td></tr>
 </tbody>
 </table>
 
@@ -101,7 +102,7 @@ Real-world use cases: KYC onboarding, verified professional profiles, org / gran
 
 <pre style="background:#fff;border:1px solid #a09b91;padding:8px;">
 contracts/veridoc.py        # the contract (single file)
-tests/test_veridoc.py       # pytest suite (34 tests, incl. adversarial paths)
+tests/test_veridoc.py       # pytest suite (38 tests, incl. adversarial + consensus-disagreement paths)
 scripts/                    # deploy + e2e on studionet (node)
 src/ + public/              # Next.js frontend (Office Classic UI)
 package.json / vercel.json  # frontend deps + Vercel config
@@ -129,6 +130,15 @@ Local testing (no network):
 ```bash
 python -m pytest tests/ -q
 ```
+
+**Steward review coverage** (38 tests, all green):
+
+- `test_consensus_rejects_exact_status_disagreement` — leader returns VERIFIED, validator re-runs and gets UNVERIFIED → validator **disagrees**.
+- `test_consensus_rejects_verified_vs_inconclusive_mismatch` — VERIFIED vs INCONCLUSIVE → **disagrees**.
+- `test_consensus_accepts_exact_status_match` — same exact status → agrees.
+- `test_get_all_subjects_filters_by_owner` — `get_all_subjects(owner)` returns only the wallet's subjects (the Verify page's filter), verified live on Studionet.
+
+The consensus tests drive the captured validator directly (`vm.run_validator()`), so they fail on the old truthiness comparison (`bool("VERIFIED") == bool("UNVERIFIED")`) and pass once verdicts are compared exactly.
 
 ---
 
@@ -172,8 +182,8 @@ get_verified_subjects()
 <!-- ============ Status bar ============ -->
 <div style="background:#ece9d8;border-top:1px solid #7f7b76;border-bottom:1px solid #fff;padding:3px 8px;font-size:11px;color:#333;display:flex;gap:8px;">
   <span style="border:1px solid #7f7b76;border-right:1px solid #fff;border-bottom:1px solid #fff;padding:2px 10px;background:#ddebf7;color:#1a3a66;">● Studionet</span>
-  <span style="border:1px solid #7f7b76;border-right:1px solid #fff;border-bottom:1px solid #fff;padding:2px 10px;background:#f1efe9;">Contract: 0x59b1…946a</span>
-  <span style="border:1px solid #7f7b76;border-right:1px solid #fff;border-bottom:1px solid #fff;padding:2px 10px;background:#c6efce;color:#006100;">✔ 34 tests passing</span>
+  <span style="border:1px solid #7f7b76;border-right:1px solid #fff;border-bottom:1px solid #fff;padding:2px 10px;background:#f1efe9;">Contract: 0x6C09…5F25e</span>
+  <span style="border:1px solid #7f7b76;border-right:1px solid #fff;border-bottom:1px solid #fff;padding:2px 10px;background:#c6efce;color:#006100;">✔ 38 tests passing</span>
   <span style="margin-left:auto;border:1px solid #7f7b76;border-right:1px solid #fff;border-bottom:1px solid #fff;padding:2px 10px;background:#f1efe9;">Ready</span>
 </div>
 

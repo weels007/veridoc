@@ -148,6 +148,17 @@ async function main() {
   await read(client, "get_fee_balance", [], "fee balance");
   await read(client, "get_verified_subjects", [], "attestation registry");
   await read(client, "get_all_subjects", [], "all subjects");
+  const ownersOnly = await read(client, "get_all_subjects", [owner.address], "all subjects (owner filter)");
+  const otherOnly = await read(client, "get_all_subjects", [challenger.address], "all subjects (other filter)");
+  const ownedKeys = (ownersOnly ? Object.keys(ownersOnly) : []).sort();
+  const otherKeys = (otherOnly ? Object.keys(otherOnly) : []);
+  log(`  [owner-filter] owner owns: ${JSON.stringify(ownedKeys)}`);
+  log(`  [owner-filter] other owns: ${JSON.stringify(otherKeys)}`);
+  const ownerOk = ownedKeys.includes(SUBJECT) && ownersOnly[SUBJECT]?.owner?.toLowerCase?.() === owner.address.toLowerCase();
+  const otherOk = otherKeys.length === 0;
+  if (!ownerOk) log("  !!! owner filter MISSING the owner's subject");
+  if (!otherOk) log("  !!! owner filter leaked a non-owned subject");
+  log(`  [owner-filter check] ${ownerOk && otherOk ? "PASS" : "FAIL"}`);
   await read(client, "get_contract_stats", [], "stats");
 
   // ---- 4. REVERIFY / CHALLENGE ----

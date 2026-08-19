@@ -767,3 +767,80 @@ def test_evidence_independent_hosts_required_for_medium(vm, contract, owner, ali
         llm_status="VERIFIED",
     )
     assert contract.is_verified("acme") is True
+
+
+# --------------------------------------------------------------------------
+# 13. Leader/validator consensus: exact verdict comparison
+# --------------------------------------------------------------------------
+
+
+def _replay_validator(vm, llm_status, violations=None):
+    """Re-run the captured validator with fresh mocks, as if the validator's
+    independent re-run of the pipeline saw `llm_status`. Returns the validator's
+    verdict (True = agrees with the leader, False = disagrees)."""
+    vm.clear_mocks()
+    vm.mock_web(re.escape("https://acme.example.com/about"), web_for("https://acme.example.com/about"))
+    vm.mock_llm(r"Python boolean expressions", json.dumps({"checks": []}))
+    vm.mock_llm(
+        r"verification judge",
+        json.dumps({"status": llm_status, "violations": violations or [], "reasoning": "r"}),
+    )
+    return vm.run_validator()
+
+
+def test_consensus_rejects_exact_status_disagreement(vm, contract, owner, alice):
+    """The leader returns VERIFIED but the validator's re-run returns
+    UNVERIFIED. Because consensus compares the EXACT status strings, the
+    validator must disagree even though both statuses are non-empty."""
+    create_subject(vm, contract, owner)
+    stake(vm, contract, alice, STAKE_REQUIRED * 2)
+    # Leader pipeline sees a VERIFIED verdict.
+    verify(vm, contract, alice, "acme", llm_status="VERIFIED")
+
+    # Validator independently re-runs the pipeline and sees UNVERIFIED.
+    assert _replay_validator(vm, "UNVERIFIED", ["fraud"]) is False
+
+
+def test_consensus_rejects_verified_vs_inconclusive_mismatch(vm, contract, owner, alice):
+    """VERIFIED vs INCONCLUSIVE are different verdicts and must not agree."""
+    create_subject(vm, contract, owner)
+    stake(vm, contract, alice, STAKE_REQUIRED * 2)
+    verify(vm, contract, alice, "acme", llm_status="VERIFIED")
+
+    assert _replay_validator(vm, "INCONCLUSIVE") is False
+
+
+def test_consensus_accepts_exact_status_match(vm, contract, owner, alice):
+    """Same exact status (and matching prog_violated) -> validator agrees."""
+    create_subject(vm, contract, owner)
+    stake(vm, contract, alice, STAKE_REQUIRED * 2)
+    verify(vm, contract, alice, "acme", llm_status="VERIFIED")
+
+    assert _replay_validator(vm, "VERIFIED") is True
+
+
+# --------------------------------------------------------------------------
+# 14. get_all_subjects owner filter (Verify page alignment)
+# --------------------------------------------------------------------------
+
+
+def test_get_all_subjects_filters_by_owner(vm, contract, owner, alice):
+    create_subject(vm, contract, owner, subject_id="acme")
+    create_subject(vm, contract, owner, subject_id="nexus")
+    # Alice owns a different subject.
+    vm.sender = alice
+    vm.value = 0
+    contract.create_subject("alice-inc", "Alice Inc", "d", "organization", "low", "")
+
+    # No filter -> everything.
+    all_subjects = contract.get_all_subjects()
+    assert set(all_subjects.keys()) == {"acme", "nexus", "alice-inc"}
+
+    # Filtered by owner (case-insensitive, same as the Verify page).
+    mine = contract.get_all_subjects(addr_key(owner))
+    assert set(mine.keys()) == {"acme", "nexus"}
+    alice_only = contract.get_all_subjects(addr_key(alice))
+    assert set(alice_only.keys()) == {"alice-inc"}
+
+    # Filtered results still expose the owner field the page compares.
+    assert all(str(s["owner"]).lower() == addr_key(owner) for s in mine.values())

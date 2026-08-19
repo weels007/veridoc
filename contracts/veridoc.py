@@ -14,9 +14,9 @@ experience"). Anyone then submits evidence URLs, and the contract:
      arbitrary calls, no `__dunder__` access) - a programmatic GROUND TRUTH,
   4. has an LLM judge the subjective claims, injecting the programmatic
      results as ground truth so the model cannot override verifiable facts, and
-  5. reaches consensus between leader and validators by comparing ONLY the
-     final decision field (`status`: VERIFIED / UNVERIFIED / INCONCLUSIVE),
-     following the partial-field matching pattern from the GenLayer docs.
+  5. reaches consensus between leader and validators by comparing the EXACT
+     decision fields (`status`: VERIFIED / UNVERIFIED / INCONCLUSIVE, compared
+     as strings, plus `prog_violated`), so two different verdicts never agree.
 
 Beyond the core pipeline, veridoc adds production-grade KYC mechanics:
 
@@ -551,8 +551,9 @@ def _run_verify_consensus(
     Leader/validator consensus for the verification pipeline.
 
     The leader runs the full pipeline. Validators independently re-run the
-    same pipeline and accept ONLY if the derived decision fields match:
-      - `status` (VERIFIED / UNVERIFIED / INCONCLUSIVE), and
+    same pipeline and accept ONLY if the EXACT decision fields match:
+      - `status` compared as exact strings (VERIFIED / UNVERIFIED /
+        INCONCLUSIVE) - two different statuses NEVER agree, and
       - `prog_violated` (whether any mandatory programmatic criterion failed).
 
     Because `prog_violated` is a deterministic derivation from the generated
@@ -573,7 +574,7 @@ def _run_verify_consensus(
             return False
         my = leader_fn()
         return (
-            bool(my["status"]) == bool(leader_data.get("status"))
+            my["status"] == leader_data.get("status")
             and bool(my["prog_violated"]) == bool(leader_data.get("prog_violated"))
         )
 
@@ -1283,7 +1284,12 @@ class Veridoc(gl.Contract):
         }
 
     @gl.public.view
-    def get_all_subjects(self) -> dict:
+    def get_all_subjects(self, owner: str = "") -> dict:
+        """All subjects, optionally filtered to those owned by `owner` (hex
+        address). The Verify page only lets a wallet verify its own subjects,
+        so it passes the connected wallet here and the contract does the same
+        lowercased-address matching the page would otherwise do client-side."""
+        owner_key = owner.lower() if owner else ""
         return {
             sid: {
                 "id": s.id,
@@ -1294,6 +1300,7 @@ class Veridoc(gl.Contract):
                 "trust_score": s.trust_score,
             }
             for sid, s in self.subjects.items()
+            if not owner_key or _addr(s.owner) == owner_key
         }
 
     @gl.public.view

@@ -113,8 +113,21 @@ export default function StakePage() {
           <div className="section-title">Withdraw stake (current: {stake} GEN)</div>
           <div className="field-group">
             <label className="office-label">Amount (GEN)</label>
-            <input className="office-input" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} />
+            <input
+              className="office-input"
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+              max={stake > 0 ? stake : undefined}
+            />
           </div>
+          <div style={{ marginBottom: 8, fontSize: 11, color: "#555" }}>
+            Max withdraw: <b>{stake} GEN</b>. To stay able to verify/challenge, keep at least {STAKE_REQUIRED} GEN.
+          </div>
+          {has && stake < STAKE_REQUIRED && (
+            <div className="alert" style={{ marginBottom: 8 }}>
+              ⚠ Stake {stake} GEN is below {STAKE_REQUIRED} — you can no longer verify or challenge until you top up.
+            </div>
+          )}
           <button className="tool-btn" onClick={withdraw} disabled={busy || !has}>
             {busy ? "Submitting…" : "Withdraw Stake"}
           </button>
